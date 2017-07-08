@@ -33,6 +33,7 @@ def check_val(st):
                     temp = t1[i]
                 else:
                     temp = temp + " " + t1[i]
+                    #fg
         if temp==st:
             return temp1
         else:
