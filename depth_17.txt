@@ -1,0 +1,5 @@
+S (  NP ( NNP PREP )  NP ( NNC )  NP ( NN PREP )  NP ( NNP PREP )  NP ( PRP )  NP ( NN PREP )  NVB  VP ( VFM VAUX )  PUNC  NP ( PRP )  NP ( NNP PREP )  NP ( NNC )  NP ( NN PREP )  NP ( NN PREP )  JJP ( JJ )  NP ( NN PREP )  PREP  INTF  JJP ( JJ )  VNN  PREP  PREP  VP ( VFM VAUX )
+S (  NP ( NNC )  NP ( NN PREP )  VP ( VFM VAUX )  CC  A ( CC NP ( NNP ) )  NP ( NNC )  NP ( NN PREP )  NP ( NN PREP )  NVB  VP ( VJJ VAUX )  NP ( PRP )  JJP ( JJ )  JJP ( JJ )  NP ( NN PREP )  JVB  VP ( VFM VAUX VAUX )  PUNC )
+S ( NP ( NNP PREP ) NP ( NN ) JVB )
+S ( NP ( NNP ) PUNC )
+S ( NP ( NNP ) PUNC )
