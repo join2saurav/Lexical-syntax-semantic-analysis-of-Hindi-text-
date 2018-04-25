@@ -1,7 +1,15 @@
 from __future__ import unicode_literals
 from Tkinter import *
 from tkFileDialog import *
+from mechanize import Browser
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 import nltk
+import urllib2
 from nltk.tag import tnt
 from nltk.corpus import indian
 import tkFont
@@ -9,16 +17,42 @@ import re
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def isEmpty(self):
+        return self.items == []
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        return self.items.pop()
+
+    def peek(self):
+        return self.items[len(self.items) - 1]
+
+    def size(self):
+        return len(self.items)
 
 
 class MyBoard:
 
 
 
-
-
     def __init__(self,master):
         global filename
+        global flgs
+        self.flgs=1
+        global lstt1
+        global lstt2
+        global count_1
+        global cout
+        self.cout=0
+        self.count_1=0
+        self.lstt1=[]
+        self.lstt2=[]
        # self.g = open('depth_7.txt','w')
         self.eq=False
         self.current=""
@@ -139,11 +173,24 @@ class MyBoard:
                                command=lambda j=u'\u093F': self.printText(j))
         self.button63 = Button(bottomFrame, text=u'\u0940', font=f, fg="white", bg="blue",
                                command=lambda j=u'\u0940': self.printText(j))
-        self.button64 = Button(bottomFrame, text='pos', font=f1, fg="white", bg="blue",
-                               command=lambda j='pos': self.tagText())
+        self.button64 = Button(bottomFrame, text='POS', font=f1, fg="white", bg="blue",
+                               command=lambda j='POS': self.pos_tagging())    ##POS tagging
         bottomFrame.rowconfigure((0,1),weight=1)
+        self.button65 = Button(bottomFrame, text=u'\u094D', font=f, fg="white", bg="blue",
+                               command=lambda j=u'\u094D': self.printText(j))
+        self.button66 = Button(bottomFrame, text=u'\u0943', font=f, fg="white", bg="blue",
+                               command=lambda j=u'\u0943': self.printText(j))
 
-
+        self.button67 = Button(bottomFrame, text='LEX', font=f1, fg="white", bg="blue",
+                               command=lambda j='LEX': self.lex_analysis())               ##lexical
+        self.button68 = Button(bottomFrame, text='SYN', font=f1, fg="white", bg="blue",
+                               command=lambda j='SYN': self.tagText())    ## syntax
+        self.button69 = Button(bottomFrame, text='SEM', font=f1, fg="white", bg="blue",
+                               command=lambda j='SEM': self.mor_analysis())## semantics
+        self.button70 = Button(bottomFrame, text=u'\u003F', font=f1, fg="white", bg="blue",
+                               command=lambda j=u'\u003F': self.printText(j))
+        self.button71 = Button(bottomFrame, text=u'\u002C', font=f1, fg="white", bg="blue",
+                               command=lambda j=u'\u002C': self.printText(j))  ## semantics
         self.button1.grid(row=0,column=0,sticky='EWNS')
         self.button2.grid(row=0,column=1,sticky='EWNS')
         self.button3.grid(row=0,column=2,sticky='EWNS')
@@ -208,21 +255,692 @@ class MyBoard:
         self.button62.grid(row=4,column=11,sticky='EWNS')
         self.button63.grid(row=4,column=12,sticky='EWNS')
         self.button64.grid(row=5, column=0, sticky='EWNS')
+        self.button65.grid(row=5, column=1, sticky='EWNS')
+        self.button66.grid(row=5, column=2, sticky='EWNS')
+        self.button67.grid(row=5, column=3, sticky='EWNS')
+        self.button68.grid(row=5, column=4, sticky='EWNS')
+        self.button69.grid(row=5, column=5, sticky='EWNS')
+        self.button70.grid(row=5, column=6, sticky='EWNS')
+        self.button71.grid(row=5, column=7, sticky='EWNS')
 
 
-    def tagText(self):
+    def mor_analysis(self):
+        f1 = open("depth_40.txt", "w+")
+        f2 = open("depth_41.txt", "w+")
+        f3 = open("depth_42.txt", "w+")
+        f4 = open("depth_43.txt","w+")
+        gt = open('depth_24.txt', 'w+')
+        f5 = open("depth_44.txt", "w+")
+        f6 = open("depth_45.txt", "w+")
+        f7 = open("depth_46.txt", "w+")
+        f8 = open("depth_47.txt", "w+")
+        f9 = open("depth_48.txt", "w+")
+        f1.truncate()
+        f2.truncate()
+        f3.truncate()
+        f4.truncate()
+        f5.truncate()
+        f6.truncate()
+        f7.truncate()
+        f8.truncate()
+        f9.truncate()
+
+        s = self.t.get("1.0", "end-1c")
+
+        train_data = indian.tagged_sents('hindi.pos')
+        tnt_pos_tagger = tnt.TnT()
+        tnt_pos_tagger.train(train_data)  # Training the tnt Part of speech tagger with hindi data
+
+        t = tnt_pos_tagger.tag(nltk.word_tokenize(s))
+        di = dict(t)
+        for k, v in di.iteritems():
+            # print k,v
+            gt.write(k)
+            gt.write(" ")
+            gt.write(v)
+            gt.write("\n")
+        gt.seek(0)
+        lsst = []
+        self.lstt1[:] = []
+        # self.count_1 = 0
+        lines = gt.readlines()
+        ln = len(s.split())
+        #print ln
+        if ln<3:
+            self.t.insert(INSERT,"\n")
+            self.t.insert(INSERT,"Not a sentence")
+            return
+
+        for word in s.split():
+            wrd = word
+            for line in lines:
+                st = line.split()  # [:1]
+                for word in st:
+                    if wrd != word:
+                        pass
+                    else:
+                        k = 0
+                        for word in st:
+                            if k == 0:
+                                self.lstt1.append(word)
+                                k = k + 1
+                            else:
+                                if word == "Unk":
+                                    word = "NN"
+                                # print word
+                                lsst.append(word)
+        i=1
+        number="sg"
+        while i< len(lsst)-2:
+
+            if (lsst[i] == "CC" or lsst[i] == "PUNC") and ((lsst[i-1]=="NN" or lsst[i-1]=="NNP" or lsst[i-1]=="NNC" or lsst[i-1]=="NNPC") and (lsst[i+1]=="NN" or lsst[i+1]=="NNP" or lsst[i+1]=="NNC" or lsst[i+1]=="NNPC")):
+                number="pl"
+            i=i+1
+        print number
+
+        #s = self.t.get("1.0", "end-1c")
+        #counter = 1
+
+        #number = self.check_conjuction(counter)
+
+        browser = Browser()
+        browser.open("http://sampark.iiit.ac.in/hindimorph/web/restapi.php/indic/morphclient")
+        #br = self.mechanize.Browser()
+        #br.set_handle_robots(False)
+        browser.set_handle_equiv(False)
+        browser.select_form(nr=0)
+        browser['yourtext'] = s
+        #browser['genre'] = ['nonfiction']
+
+        response = browser.submit()
+
+        content = response.read()
+
+        soup = BeautifulSoup(content)
+        for tag in soup.findAll('a', href=True):
+            print tag['href']
+            f1.write(tag['href'])
+            f1.write("\n")
+        f1.seek(0)
+        lines =f1.readlines()
+        for line in lines:
+            if line.startswith("http") or line.startswith("mailto"):
+                pass
+            elif line.startswith("/"):
+                ss = "http://sampark.iiit.ac.in"+line
+                print ss
+                request = urllib2.Request(ss)
+                response = urllib2.urlopen(request)
+
+                html = response.read()
+                f2.write(html)
+                f2.seek(0)
+                lines = f2.readlines()
+                lst = []
+                for line in lines:
+                    if line.startswith("<"):
+                        pass
+                    else:
+                        lst.append(line.split(','))
+                k=0
+                for i in range(len(lst)):
+                    print lst[i]
+                    k=k+1
+                for i in range (len(lst)):
+                    stri=""
+                    #stri=stri+str(i)
+                    stri=lst[i]
+                    ls1 = " ".join(stri).split(" ")
+                    #print ls1
+                    if (ls1[2]=='n') or (ls1[2]=='pn'):
+                        for mn in range (len(ls1)):
+                            f3.write(ls1[mn])
+                            f3.write(",")
+                            #f3.write(",")
+                            #f3.write(" ")
+                        f3.write("\n")
+                    elif (ls1[2]=='v'):
+                        for mn in range (len(ls1)):
+                            f4.write(ls1[mn])
+                            f4.write(",")
+                            #f4.write( ",")
+                            #f4.write(" ")
+                        f4.write("\n")
+
+                f3.seek(0)
+                f4.seek(0)
+                lines = f3.readlines()
+                for line in lines:
+                    i = 1
+                    ln = len(line.split(","))
+                    for word in line.split(","):
+                        if i == 2:
+                            f5.write(word)
+                            f5.write(" ")
+                        elif i <= (ln - 7) and i!=2:
+                            pass
+                        elif i > (ln - 7) and i < (ln - 3):
+                            f5.write(word)
+                            f5.write(" ")
+                        else:
+                            pass
+                        i = i + 1
+                    f5.write("\n")
+                lines = f4.readlines()
+                for line in lines:
+                    i = 1
+                    ln = len(line.split(","))
+                    for word in line.split(","):
+                        if i==2:
+                            f5.write(word)
+                            f5.write(" ")
+                        elif i <= (ln - 7) and i!=2:
+                            pass
+                        elif i > (ln - 7) and i < (ln - 3):
+                            f5.write(word)
+                            f5.write(" ")
+                        else:
+                            pass
+                        i = i + 1
+                    f5.write("\n")
+                f5.seek(0)
+                lines=f5.readlines()
+                for line in lines:
+                    i=1
+                    for word in line.split(" "):
+                        #if word=="":
+                         #   break
+                        if i==1:
+                            j=1
+                            sts=""
+                            for letter in word:
+                                if j<5:
+                                    pass
+                                else:
+                                    if sts=="":
+                                        sts=letter
+                                    else:
+                                        sts=sts+letter
+                                j=j+1
+                            f6.write(sts)
+                            f6.write(" ")
+                        else:
+                            f6.write(word)
+                            f6.write(" ")
+                        i=i+1
+                    f6.write("\n")
+
+                f6.seek(0)
+                lines=f6.readlines()
+                for word in s.split():
+                    ss=word
+                    #print ss
+                    for line in lines:
+                        i=1
+                        if line.isspace():
+                            continue
+                        for word in line.split(" "):
+                            if i==1:
+
+                                length= len(word)
+                                ii=1
+                                sss=""
+                                for letter in word:
+                                    if ii>length-1:
+                                        break
+                                    if sss=="":
+                                        sss=letter
+                                    else:
+                                        sss=sss+letter
+                                    ii=ii+1
+                                if ss.startswith(sss):
+                                    #print word
+                                    f7.write(line)
+                                   # #f7.write("\n")
+                                #elif ss.startswith()
+                                else:
+                                    pass
+                            else:
+                                pass
+                            i=i+1
+
+                f7.seek(0)
+                lines=f7.readlines()
+                for line in lines:
+                    i=1
+                    for word in line.split(" "):
+                        if i==2 and (word=='n'or word=='pn'):
+                            f8.write(line)
+                            ##f8.write("\n")
+                        elif i==2 and word=='v':
+                            f9.write(line)
+                            ##f9.write("\n")
+                        else:
+                            pass
+                        i=i+1
+
+
+
+
+                        #for line in lines:
+                 #   i=1
+                  #  for word in line.split():
+                        #if i==1 or (i>2 and i<6) or i>8:
+                         #   pass
+                        #if i==2:
+                         #   f5.write(word)
+                          #  f5.write(" ")
+                        #elif i>=6 and i<=8:
+                         #   f5.write(word)
+                          #  f5.write(" ")
+                        #i=i+1
+                    #f5.write("\n")
+                #lines =f4.readlines()
+                #for line in lines:
+                 #   i=1
+                  #  for word in line.split():
+                   #     if i==1 or (i>2 and i<6) or i>8:
+                    #        pass
+                     #   if i==2:
+                      #      f6.write(word)
+                       #     f6.write(" ")
+                        #elif i>=6 and i<=8:
+                         #   f6.write(word)
+                          #  f6.write(" ")
+                        #i=i+1
+                    #f6.write("\n")
+                f8.seek(0)
+                f9.seek(0)
+                yy=u'\u0928\u0939'
+                f10=open("depth_49.txt","w+")
+                lines = f9.readlines()
+                for line in lines:
+                    if line.startswith(yy):
+                        pass
+                    else:
+                        f10.write(line)
+                        #f10.write("\n")
+                f9.close()
+                f10.seek(0)
+                lines=f10.readlines()
+                lis =[]
+                for line in lines:
+                    for word in line.split():
+                        lis.append(word)
+                lis1 = []
+                lines = f8.readlines()
+                for line in lines:
+                    for word in line.split():
+                        lis1.append(word)
+
+                i=1
+                j=6
+                flag=TRUE
+                msg="HELP:"
+                while i<j:
+                    if i==1:
+                        k=2
+                        #if len(lis)==4:
+                         #   msg=msg+"Auxilliary verb absent"
+                          #  flag=FALSE
+                           # break
+                        while k<len(lis) and (k+4)<len(lis):
+
+                            if (lis[k]==lis[k+4]) or lis[k]=="any" or lis[k+4]=="any":
+                                if flag==FALSE:
+                                    pass
+                                else:
+                                    flag=TRUE
+                            else:
+                                msg = msg + "Verb and Auxilliary verb do not have same gender"
+                                flag=FALSE
+
+                            k=k+4
+                    elif i==2:
+                        k=3
+                        while k<len(lis) and (k+4)<len(lis):
+                            if (lis[k]==lis[k+4])or lis[k]=="any" or lis[k+4]=="any":
+                                if flag==FALSE:
+                                    pass
+                                else:
+                                    flag=TRUE
+                            else:
+                                msg = msg + "\n"+"Verb and Auxilliary verb do not have same number"
+                                flag=FALSE
+
+                            k=k+4
+                    elif i==3:
+                        l=2
+                        m=2
+                        if len(lis)==4:
+                            if len(lis1) == 4:
+                                number = lis1[3]
+                                print number
+                                if (lis[l] == lis1[m]) or lis[l] == "any" or lis1[m] == "any":
+                                    if number == lis[l + 1] or lis[l + 1] == "any":
+                                        if flag==FALSE:
+                                            pass
+                                        else:
+                                            flag = TRUE
+                                    else:
+                                        msg = msg +"\n"+"Nouns and Verb do not have same number"
+                                        flag = FALSE
+
+                                else:
+                                    msg = msg +"\n"+"Noun and verb do not have same gender"
+                                    flag = FALSE
+
+                            else:
+
+                                while m < len(lis1) and (m + 4) < len(lis1):
+                                    if (lis[l] == lis1[m]) or lis[l] == "any" or lis1[m] == "any":
+                                        if number == lis[l + 1] or lis[l + 1] == "any":
+                                            if flag==FALSE:
+                                                pass
+                                            else:
+                                                flag = TRUE
+                                        else:
+                                            msg = msg +"\n"+ "Nouns and Verb do not have same number"
+                                            flag = FALSE
+
+                                    else:
+                                        msg = msg +"\n"+"Noun and verb do not have same gender"
+                                        flag = FALSE
+
+                                    m = m + 4
+                                m = 2
+
+
+                        else:
+
+                            while l<len(lis) and (l+4)<len(lis):
+                                if len(lis1)==4:
+                                    number=lis1[3]
+                                    print number
+                                    if (lis[l] == lis1[m]) or lis[l] == "any" or lis1[m] == "any":
+                                        if number == lis[l + 1] or lis[l + 1] == "any":
+                                            if flag==FALSE:
+                                                pass
+                                            else:
+                                                flag = TRUE
+                                        else:
+                                            msg = msg +"\n"+"Nouns and Verb do not have same number"
+                                            flag = FALSE
+
+                                    else:
+                                        msg = msg +"\n"+"Noun and verb do not have same gender"
+                                        flag = FALSE
+
+                                else:
+
+                                    while m < len(lis1) and (m+4)<len(lis1):
+                                        if (lis[l]==lis1[m])or lis[l]=="any" or lis1[m]=="any":
+                                            if number == lis[l+1] or lis[l+1]=="any":
+                                                if flag==FALSE:
+                                                    pass
+                                                else:
+                                                    flag=TRUE
+                                            else:
+                                                msg=msg+"\n"+"Nouns and Verb do not have same number"
+                                                flag=FALSE
+
+                                        else:
+                                            msg=msg+"\n"+"Noun and verb do not have same gender"
+                                            flag=FALSE
+
+                                        m=m+4
+                                    m=2
+                                l=l+4
+                    i=i+1
+
+                if flag==FALSE:
+                    self.t.insert(INSERT,"\n")
+                    self.t.insert(INSERT,"Semantically incorrect sentence")
+                    self.t.insert(INSERT,"\n")
+                    self.t.insert(INSERT,msg)
+                else:
+                    self.t.insert(INSERT,"\n")
+                    self.t.insert(INSERT,"Semantically correct sentence")
+                print i
+
+
+
+
+
+
+
+                ######t =k-1 #last row of list that points to punctuation ###Here
+                ######flag = TRUE
+                ######i=1
+                ######j=10
+                ######msg="HELP:"
+                #print "number value is"
+                #print number
+                ######while flag==TRUE and i<j:
+                    ######if i == 1:
+                        ######str1 = lst[t-1]
+                        ######str2 = lst[t-2]
+                        ######ls1=" ".join(str1).split(" ")
+                        ######ls2=" ".join(str2).split(" ")
+                        ######if ls1[2]=='v' and ls2[2]=='v':
+                            ######if (ls1[4]==ls2[4]): #or (ls1[4]=="any") or (ls2[4]=="any"):
+                                ######flag=TRUE
+
+                            ######else:
+                                ######msg=msg+"Verb and Auxilliary verb do not have same number"
+                                ######flag=FALSE
+                    ######if i == 2:
+                        ######str1 = lst[t - 1]
+                        ######str2 = lst[t - 2]
+                        ######ls1 = " ".join(str1).split(" ")
+                        ######ls2 = " ".join(str2).split(" ")
+                        ######if ls1[2] == 'v' and ls2[2] == 'v':
+                            ######if (ls1[3] == ls2[3]) or ls1[3]=="any" or ls2[3]=="any":  # or (ls1[4]=="any") or (ls2[4]=="any"):
+                                ######flag = TRUE
+
+                            ######else:
+                                ######msg = msg + "Verb and Auxilliary verb do not have same gender"
+                                ######flag = FALSE
+
+                    ######elif i==3:
+                        ######str1 =lst[0]
+                        ######str2 = lst[t-2]
+                        ######ls1 = " ".join(str1).split(" ")
+                        ######ls2 = " ".join(str2).split(" ")
+                        ######if ls1[2]=='n' and ls2[2]=='v':
+                              ######  if ls1[3]==ls2[3] or ls1[3]=="any" or ls2[3]=="any":
+                                    ######if number==ls2[4]:
+                                        ######flag=TRUE
+                                    ######else:
+                                        ######msg=msg+"Nouns and Verb do not have same number"
+                                        ######flag=FALSE
+                                ######else:
+                                    ######msg=msg+"Noun and verb do not have same gender"
+                                    ######flag=FALSE
+
+                    ######elif i == 4:
+                        ######str1 = lst[0]
+                        ######str2 = lst[t-2]
+                        ######str3 = lst[t-1]
+                        ######ls1 = " ".join(str1).split(" ")
+                        ######ls2 = " ".join(str2).split(" ")
+                        ######ls3 = " ".join(str3).split(" ")
+                        ######if ls1[2]=='n'and ls2[2]=='n':
+                            ######if number == ls3[4]:
+                                ######flag=TRUE
+                            ######else:
+                                ######msg = msg+"Nouns and verb do not have same number"
+                                ######flag=FALSE
+        f10.close()
+        f8.close()
+    def print_tree(self,mat1, ln, st,st1, tm):
+        global sty
+        global sty1
+        sty = st
+        sty1 = st1
+        k = 1
+        for word in tm.split():
+            if k == 1:
+                sty = sty + " " + word + " " + "("
+                sty1 = sty1 + " " + word + " " + "("
+                k = k + 1
+                print sty
+            elif k == 2:
+                i = 1
+                flags=0
+                tm1_1=''
+                tm2_2=''
+                for letter in word:
+                    if letter == "(":
+                        pass
+                    elif letter == ")":
+                        pass
+                    elif flags ==0:
+                        if letter ==",":
+                            flags =1
+                        else:
+                            if tm1_1=='':
+                                tm1_1=letter
+                            else:
+                                tm1_1= tm1_1+letter
+                    elif flags==1:
+                        tm2_2=tm2_2+letter
+                #print tm1_1
+                #print tm2_2
+                tm1 = int(tm1_1)
+                tm2 = int (tm2_2)
+                    ##elif i == 1:
+                      ##  tm1 = int(letter)
+                        ##i = i + 1
+                    ##elif i == 2:
+                      ##  tm2 = int(letter)
+                if (tm1 == tm2):
+                    sty = sty + self.lstt1[self.count_1] + ")"
+                    # sty=sty+self.lstt1.pop()+")"
+                    sty1 = sty1 + " " + ")"
+                    self.count_1 = self.count_1 + 1
+                else:
+                    mn = mat1[tm1][tm2]
+                    # sty=self.print_tree(mat1, ln, sty,sty1, mn)+")"
+                    self.print_tree(mat1, ln, sty, sty1, mn)
+                    # for i1 in range(self.cout-1):
+                    sty = sty + " " + ")"
+                    sty1 = sty1 + " " + ")"
+                    # self.cout =self.cout+1
+                k = k + 1
+            elif k == 3:
+                sty = sty + " " + word + " " + "("
+                sty1 = sty1 + " " + word + " " + "("
+                k = k + 1
+                print sty
+            elif k == 4:
+                i = 1
+                flags=0
+                tm1_1=''
+                tm2_2=''
+                for letter in word:
+                    if letter == "(":
+                        pass
+                    elif letter == ")":
+                        pass
+                    elif flags == 0:
+                        if letter == ",":
+                            flags = 1
+                        else:
+                            if tm1_1=='':
+                                tm1_1=letter
+                            else:
+                                tm1_1 = tm1_1 + letter
+                    elif flags == 1:
+                        tm2_2 = tm2_2 + letter
+                #print tm1_1
+                #print tm2_2
+                tm1 = int(tm1_1)
+                tm2 = int(tm2_2)
+                    ##elif i == 1:
+                      ##  tm1 = int(letter)
+                        # print tm1
+                        ##i = i + 1
+                    ##elif i == 2:
+                      ##  tm2 = int(letter)
+                        # print tm2
+                if (tm1 == tm2):
+                    # sty= sty+self.lstt1[self.count_1]+")"+" "+")"
+                    # sty1 = sty1 +" "+ ")" + " " + ")"
+                    sty = sty + self.lstt1[self.count_1] + ")"
+                    # sty=sty+self.lstt1.pop()+")"
+                    sty1 = sty1 + " " + ")"
+                    self.count_1 = self.count_1 + 1
+                    print sty
+
+                else:
+                    mn = mat1[tm1][tm2]
+                    self.print_tree(mat1, ln, sty, sty1, mn)
+                    sty = sty + " " + ")"
+                    sty1 = sty1 + " " + ")"
+                k = k + 1
+            elif k > 4:
+                self.flgs = 0
+                return sty, sty1
+        # sty=sty+" "+")"
+        # sty1=sty1+" "+")"
+        return sty, sty1
+
+    def alter_mat1(self,mat1,ln):
+        for i in range(ln):
+            for j in range(ln):
+                ser=mat1[i][j]
+                if len(ser.split())>4:
+                    tr=1
+                    ser1=""
+                    for word in ser.split():
+                        if tr==1:
+                            tr=tr+1
+                        elif tr==2:
+                            tr =tr+1
+                        elif tr==3:
+                            tr =tr+1
+                        elif tr==4:
+                            tr= tr+1
+                        else:
+                            if ser1=="":
+                                ser1=word
+                            else:
+                                ser1=ser1+" "+word
+                    mat1[i][j]=ser1
+        #for i in range(ln):
+           # print mat1[i]
+        return mat1
+    def pos_tagging(self):
         gt = open('depth_24.txt', 'w+')
         s = self.t.get("1.0", "end-1c")
         train_data = indian.tagged_sents('hindi.pos')
         tnt_pos_tagger = tnt.TnT()
         tnt_pos_tagger.train(train_data)  # Training the tnt Part of speech tagger with hindi data
 
-        t=tnt_pos_tagger.tag(nltk.word_tokenize(s))
-        #print u' '.join(str(tr))
+        t = tnt_pos_tagger.tag(nltk.word_tokenize(s))
+            # print u' '.join(str(tr))
 
 
         di = dict(t)
 
+        for k, v in di.iteritems():
+            print k,v
+            self.t.insert(INSERT,"\n")
+            self.t.insert(INSERT,k)
+            self.t.insert(INSERT,"    ")
+            self.t.insert(INSERT,v)
+        gt.close()
+    def tagText(self):
+
+        gt = open('depth_24.txt', 'w+')
+        s = self.t.get("1.0", "end-1c")
+        train_data = indian.tagged_sents('hindi.pos')
+        tnt_pos_tagger = tnt.TnT()
+        tnt_pos_tagger.train(train_data)  # Training the tnt Part of speech tagger with hindi data
+
+        t = tnt_pos_tagger.tag(nltk.word_tokenize(s))
+        di = dict(t)
         for k, v in di.iteritems():
             #print k,v
             gt.write(k)
@@ -231,10 +949,12 @@ class MyBoard:
             gt.write("\n")
         w = len(s.split())
         h = len(s.split()) + 1
-        Matrix = [[0 for x in range(w)] for y in range(h)]
+        ###Matrix = [[0 for x in range(w)] for y in range(h)]
         #Matrix=[[]]
         gt.seek(0)
         lst=[]
+        self.lstt1[:]=[]
+        self.count_1=0
         lines=gt.readlines()
         j=1
         st1=""
@@ -252,15 +972,21 @@ class MyBoard:
                         k=0
                         for word in st:
                            if k==0:
+                               self.lstt1.append(word)
                                k=k+1
                            else:
                                 if word=="Unk":
                                    word="NN"
                                 #print word
                                 lst.append(word)
+        for i in range(ln):
+            print self.lstt1[i]
+            #print self.lstt1[3]
+        #print self.lstt1[4]
         count=0
         t=ln+1
         mat = []
+        mat1 =[]
         for i in range(ln):
             row = []
             for j in range(ln):
@@ -272,9 +998,25 @@ class MyBoard:
                     stt=''
                     row.append(stt)
             mat.append(row)
-        print mat
+        count=0
+        for i in range(ln):
+            row = []
+            for j in range(ln):
+                if i == j:
+                    tmp = lst[count]
+                    row.append(tmp)
+                    count = count + 1
+                else:
+                    stt = ''
+                    row.append(stt)
+            mat1.append(row)
+        for i in range(ln):
+            print mat1[i]
+        print "___________________________________________________________________"
+        print "___________________________________________________________________"
+        #print mat
         i=1
-        f1=open('depth_26.txt','r')
+        f1=open('depth_33.txt','r')
         lines=f1.readlines()
         while i < ln:
             l=0
@@ -304,17 +1046,200 @@ class MyBoard:
                                         else:
                                             temp = temp+" "+t1[k]
                                             #print temp
-
+                                inp = ""
+                                flg =0
                                 if temp==tmp3:
                                     #print "yo"
-                                    mat[l][r]=temp1+" "+mat[l][r]
+                                    tmp5 = mat[l][r]
+                                    for word in tmp5.split():
+                                        if word==temp1:
+                                            flg=1
+                                            break
+                                        else:
+                                            pass
+                                    if flg==0:
+                                        mat[l][r]=temp1+" "+mat[l][r]
+                                    #inp = "{"+temp+" "+"("+str(l)+" "+str(m-1)+")"+" "+"("+str(m)+" "+str(r)+")"+" "+"}"
+                                        inp =str1+" "+"("+str(l)+","+str(m-1)+")"+" "+str2+" "+"("+str(m)+","+str(r)+")"
+                                        mat1[l][r]=inp+" "+mat1[l][r]
                                     #print mat[i][j-1]
                                 else:
                                     pass
                     m =m+1
                 l =l+1
             i=i+1
-        print mat
+        f1.close()
+        for i in range(ln):
+            print mat[i]
+        print "________________________________________________________________"
+        print "________________________________________________________________"
+
+        for i in range(ln):
+            print mat1[i]
+        f_2 = open('depth_34.txt', 'w+')
+        f_2_2 = open('depth_34_1.txt','w+')
+        tmp4 = mat[0][ln-1]
+        for word in tmp4.split():
+            if word=="S":
+                de="S"+" "+"("
+                tm=mat1[0][ln-1]
+                stx=self.print_tree(mat1,ln,de,de,tm)
+                stri1=""
+                for word in stx[0].split():
+                    if stri1=="":
+                        stri1=word
+                    else:
+                        stri1 = stri1 +" "+word
+                stri1 = stri1 + " " + ")"
+
+                print stri1
+                f_2_2.write(stri1)
+                f_2_2.write("\n")
+                stri2 = ""
+                for word in stx[1].split():
+                    if stri2 == "":
+                        stri2 = word
+                    else:
+                        stri2 = stri2 + " " + word
+                stri2 = stri2 + " " + ")"
+                print stri2
+                f_2.write(stri2)
+                f_2.write("\n")
+                while self.flgs==0:
+                    mat1=self.alter_mat1(mat1,ln)
+                    for i in range(ln):
+                        print mat1[i]
+                    self.flgs=1
+                    self.count_1=0
+                    stx =self.print_tree(mat1,ln,de,de,tm)
+                    stri1 = ""
+                    for word in stx[0].split():
+                        if stri1=="":
+                            stri1=word
+                        else:
+                            stri1 = stri1 +" "+word
+                    stri1 = stri1 + " " + ")"
+                    print stri1
+                    f_2_2.write(stri1)
+                    f_2_2.write("\n")
+                    stri2 = ""
+                    for word in stx[1].split():
+                        if stri2=="":
+                            stri2=word
+                        else:
+                            stri2 = stri2 +" "+word
+                    stri2 = stri2 + " " + ")"
+                    print stri2
+                    f_2.write(stri2)
+                    f_2.write("\n")
+                    #stx[0]=stx[0]+" "+")"
+                    #stx[1]=stx[1]+" "+")"
+            else:
+                self.t.insert(INSERT,"\n")
+                self.t.insert(INSERT,"UNABLE TO PARSE")
+                return
+
+
+        t=0
+        ls=[]
+        stk=self.make_stack()
+        ls.append(stk)
+        g = open("depth_35.txt", "w+")
+        f_2.seek(0)
+        lines = f_2.readlines()
+        for line in lines:
+            #print line
+            for word in line.split():
+
+                # with open("depth_17.txt") as fileobj:
+                # for word in fileobj:
+                # for ch in word:
+                if ls[t].peek != "S":
+                    if word == '(':
+                        pk = ls[t].peek()
+                        stk1 = self.make_stack()
+                        ls.append(stk1)
+                        t = t + 1
+                        ls[t].push(pk)
+                        ls[t].push(word)
+                    elif word == ')':
+                        st = ')'
+                        while ls[t].isEmpty() == False:
+                            st = ls[t].pop() + ' ' + st
+                        # print st
+                        g.write(st)
+                        g.write("\n")
+                        t = t - 1
+                    else:
+                        ls[t].push(word)
+
+                else:
+                    ls[t].push(word)
+            g.write("____________________")
+            g.write("\n")
+        g.seek(0)
+        f_1=open("depth_36.txt","r")
+        #f1=open("depth_33.txt","r")
+        lines1=f_1.readlines()
+        lss=[]
+        k1=1
+        k=0
+        lines = g.readlines()
+        i=1
+        for line in lines:
+            if len(line.split())==3:
+                pass
+            elif line.startswith("____________________"):
+                print "probability of parse tree",i,":"
+                print k1
+                lss.append(k1)
+                k=k+1
+                k1=1
+                i=i+1
+            else:
+                #line.startswith(s3.encode('utf-8')):
+                #freq = line.rsplit(None, 1)[-1]
+                for line1 in lines1:
+                    #stt2=line1.rsplit(' ', 1)[0]
+                    if line.startswith(line1.rsplit(' ',1)[0]):
+                        k1=k1*float(line1.split()[-1])
+                        #print line1
+                    else:
+                        pass
+        f_2_2.seek(0)
+        lines =f_2_2.readlines()
+        for line in lines:
+            self.t.insert(INSERT,"\n")
+            stee= line
+            #print stee
+            self.t.insert(INSERT,stee)
+        #print lss.pop()
+        #print lss.pop()
+        maxi=0
+        kkk = max(lss)
+        #print max(lss)
+        for i in range (len(lss)):
+            if lss[i]>maxi:
+                maxi= lss[i]
+                maxindex=i
+        maxindex=maxindex+1
+        stee1 = "Best parse tree is parse tree"+ " "+ str(maxindex)
+        self.t.insert(INSERT,"\n")
+        self.t.insert(INSERT,stee1)
+        stee2 = "probability of parse tree "+" "+str(maxindex)+" "+"is:"
+        self.t.insert(INSERT,"\n")
+        self.t.insert(INSERT,stee2)
+        self.t.insert(INSERT," ")
+        self.t.insert(INSERT,kkk)
+
+
+        f_2_2.close()
+        f_2.close()
+        g.close()
+        f1.close()
+
+    def make_stack(self):
+        return Stack()
 
     def printText(self, txt):
         #g = open('depth_7.txt', 'w')
@@ -474,12 +1399,44 @@ class MyBoard:
             i=i+1
 
         g.close()
-        if flag == FALSE:
+        ###if flag == FALSE:
 
-            self.t.tag_delete(txt[:-1])
-            self.search(self.t,txt,txt)
-            self.t.tag_config(txt, foreground='red')
-            self.t.tag_bind(txt, "<ButtonRelease-1>",self.tag_fn)
+           ### self.t.tag_delete(txt[:-1])
+            ###self.search(self.t,txt,txt)
+            ###self.t.tag_config(txt, foreground='red')
+            ###self.t.tag_bind(txt, "<ButtonRelease-1>",self.tag_fn)
+    def lex_analysis(self):
+
+        f = open('depth_6.txt',"r")
+        lines = f.readlines()
+        s = self.t.get("1.0", "end-1c")
+        #self.t.delete("1.0", END)
+        for word in s.split():
+            print word
+            g2 = open('depth_7.txt', "w")
+            for line in lines:
+                if line.startswith(word):
+                    # print line[:-4]
+                    # with open('depth_7.txt','') as g:
+                    g2.write(line)
+                    g2.write("\n")
+
+            f.close()
+            g2.close()
+            with open('depth_7.txt') as g:
+                lines1 = g.read().splitlines()
+            i = 1
+            flag = FALSE
+            for line in lines1:
+                flag = TRUE
+            g.close()
+            if flag == FALSE:
+                #self.t.tag_delete(txt[:-1])
+                self.search(self.t,word,word)
+                self.t.tag_config(word, foreground='red')
+                self.t.tag_bind(word, "<ButtonRelease-1>",self.tag_fn)
+
+
 
     def tag_fn(self,event):
 
@@ -492,34 +1449,213 @@ class MyBoard:
             #print st1
             if len(st1)==1:
                 return "break"
+            #for letter in st1.split():
+             #   print letter
+              #  print "\n"
+            lnn=len(st1)
+            #print st1[:-(lnn-1)]
+            lsss=[]
+            for letter in st1:
+                lsss.append(letter)
+            #for i in range(len(lsss)):
+                #print lsss[i]
+                #print "\n"
+            #print "Lentth of list"
+            #print len(lsss)
 
 
-            g = open('depth_7.txt','w')
-            with open('depth_6.txt') as f:
-                lines = f.read().splitlines()
-            for line in lines:
-                if line.startswith(st1[:-1].encode('utf-8')):
-                    g.write(line)
-                    g.write("\n")
-                elif len(st1)==3:
-                    if line.startswith(st1[:-2].encode('utf-8')):
-                        g.write(line)
-                        g.write("\n")
+            #print lsss[3]
+
+            g = open('depth_7.txt','w+')
+            #with open('depth_6.txt') as f:
+             #   lines = f.read().splitlines()
+            f=open("depth_6.txt","r")
+            lines=f.readlines()
+            #wrrd= u'\u0932\u0921\u093c\u0915\u093E'
+            #wrrd1=u'\u0932\u0915\u0921\u093C\u093E'
+            ##Lakdaprint wrrd1
+            ##Ladkaprint  wrrd
+            #if st1==wrrd1:
+             #   g.write(wrrd)
+              #  g.write(" ")
+               # g.write("-")
+                #g.write("99")
+                #g.write("\n")
+            i=1
+            stf1=" "
+            while i<lnn:
+                stf=" "
+                k=lnn-i
+                #print lnn
+                #print "k="
+                #print k
+                l=lnn-(i+1)
+                #print "l="
+                #print l
+                for j in range(len(lsss)):
+                    #print "j="
+                    #print j
+                    if (j!=k) and (j!=l):
+                        if stf==" ":
+                            #print "lsss[]"
+                            #print lsss[j]
+                            stf=lsss[j]
+                            #print stf
+
+                        else:
+                            #print lsss[j]
+                            stf=stf+lsss[j]
+                            #print stf
+                    elif j==l:
+                        if stf==" ":
+                            #print lsss[j]
+                            stf=lsss[l+1]+lsss[l]
+                            #print stf
+                        else:
+                            #print lsss[j]
+                            stf=stf+lsss[l+1]+lsss[l]
+                            #print stf
                     else:
                         pass
-                elif len(st1)==4:
-                    if line.startswith(st1[:-3].encode('utf-8')):
-                        g.write(line)
-                        g.write("\n")
+                #print stf
+                f.seek(0)
+                for line in lines:
+                    cv=1
+                    for word in line.split():
+                        if cv==1:
+                            if word==stf:
+                                stf1=word
+                                g.write(word)
+                                g.write(" ")
+                                g.write("-")
+                                g.write(" ")
+                                g.write("99")
+                                g.write("\n")
+                            else:
+                                pass
+                        else:
+                            pass
+                        cv=cv+1
+                i=i+1
+            #print stf1
+            f.seek(0)
+            kt=50
+            ku=98
+            kk=1
+           # lines1=g.readlines()
+            while kk<=(lnn-1):
+                for line in lines:
+                    if kt==0:
+                        break
                     else:
-                        pass
+                        if line.startswith(st1[:-kk].encode('utf-8')):
+                            i=1
+                            #for i in range(len(lsss)):
+
+                            for word in line.split():
+                                if i==1:
+                                    #wrd=st[:1]
+                                    if word == st1[:-kk]:
+                                        g.write(word)
+                                        g.write(" ")
+                                        g.write("-")
+                                        g.write(" ")
+                                        g.write(str(ku))
+                                        g.write("\n")
+                                        ku=ku-1
+                                    else:
+                                        g.write(word)
+                                        g.write(" ")
+                                        g.write("-")
+                                        g.write(" ")
+                                        g.write(str(kt))
+                                        g.write("\n")
+                                        kt=kt-1
+                                else:
+                                    pass
+                                i=i+1
+                kk=kk+1
+                    #elif len(st1)==3:
+
+                     #   if line.startswith(st1[:-2].encode('utf-8')):
+                      #      i=1
+                       #     for word in line.split():
+                        #        if i==1:
+                         #           if word == st1[:-1]:
+                          #              g.write(word)
+                           #             g.write(" ")
+                            #            g.write("-")
+                             #           g.write(" ")
+                              #          g.write("97")
+                               #         g.write("\n")
+                                #    else:
+                                 #       g.write(word)
+                                  #      g.write(" ")
+                                   #     g.write("-")
+                                    #    g.write(" ")
+                                     #   g.write(str(kt))
+                                      #  g.write("\n")
+                                       # kt=kt-1
+                                #else:
+                                 #   pass
+                                #i=i+1
+                   # elif len(st1)==4:
+
+                   #     if line.startswith(st1[:-3].encode('utf-8')):
+                    #        i = 1
+                     #       for word in line.split():
+                      #          if i == 1:
+                       #             if word == st1[:-1]:
+                        #                g.write(word)
+                         #               g.write(" ")
+                          #              g.write("-")
+                           #             g.write(" ")
+                            #            g.write("96")
+                             #           g.write("\n")
+                              #      else:
+                               #         g.write(word)
+                                #        g.write(" ")
+                                 #       g.write("-")
+                                  #      g.write(" ")
+                                   #     g.write(str(kt))
+                                    #    g.write("\n")
+                                     #   kt=kt-1
+                                #else:
+                                 #   pass
+                                #i = i + 1
 
 
             g.close()
             f.close()
             self.listbox.delete(0, END)
+            with open('depth_7.txt') as f1:
+                lines1 = f1.read().splitlines()
+
+            # t = list()
+            t = []
+            for line in lines1:
+                k=0
+                for word in line.split():
+                    k=k+1
+                if k==3:
+                    s1 = line.rsplit(None, 1)[-1]
+                    t.append((int(s1), line))
+                else:
+                    pass
+            t.sort(reverse=True)
+            # res = list()
+            res = []
+            for length, line in t:
+                res.append(line)
+            f1.close()
+            f2 = open('depth_7.txt', 'w')
+            for i in range(len(res)):
+                f2.write(res[i])
+                f2.write("\n")
+            f2.close()
             with open('depth_7.txt') as h:
                 lines1 =h.read().splitlines()
+
             i=0
             self.listbox.insert(END,"ADD TO DICT.")
             for line in lines1:
@@ -528,6 +1664,7 @@ class MyBoard:
                 #print line[:-4]
                 self.listbox.insert(END, line[:-4])
                 i = i + 1
+            #self.listbox.insert(END,"EXIT")
             self.listbox.grid()
             h.close()
             return "break"
@@ -663,6 +1800,8 @@ class MyBoard:
             g.write("\n")
             g.close()
             self.t.tag_config(st3, foreground='black')
+        #elif st=="EXIT":
+         #   self.listbox.delete(0, END)
 
 
         else:
@@ -712,5 +1851,5 @@ class MyBoard:
 root = Tk()
 k = MyBoard(root)
 root.minsize(width=1000,height=570)
-root.maxsize(width=1200,height=570)
+root.maxsize(width=1300,height=600)
 root.mainloop()
